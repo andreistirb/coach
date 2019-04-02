@@ -375,6 +375,29 @@ jobs:
             kubectl delete ns trace-test-mujoco-${CIRCLE_BUILD_NUM} || true
           when: always
 
+  update_trace_test_mujoco:
+    <<: *executor_prep
+    steps:
+      - checkout
+      - *remote_docker
+      - *restore_cache
+      - *aws_prep
+      - *docker_prep
+      - run:
+          name: run mujoco related trace tests and update traces files
+          command: |
+            export TRACE_PRESETS='BitFlip_DQN,Mujoco_A3C'
+            python3 rl_coach/tests/test_eks.py -c coach-test -bn ${CIRCLE_BUILD_NUM} -tn trace-test-mujoco -tc "export TRACE_PRESETS=${TRACE_PRESETS} && make trace_tests_without_docker" -i 316971102342.dkr.ecr.us-west-2.amazonaws.com/coach-mujoco_environment:$(git describe --tags --always --dirty) -cpu 2048 -mem 4096
+            git commit -m "push traces"
+            git push -u origin traces_ayoob
+          no_output_timeout: 30m
+      - run:
+          name: cleanup
+          command: |
+            kubectl delete --all pods --namespace=trace-test-mujoco-${CIRCLE_BUILD_NUM} || true
+            kubectl delete ns trace-test-mujoco-${CIRCLE_BUILD_NUM} || true
+          when: always
+
   multinode_test:
     <<: *executor_prep
     steps:
@@ -499,6 +522,9 @@ workflows:
           requires:
             - doom_approval
       - trace_test_mujoco:
+          requires:
+            - mujoco_approval
+      - update_trace_test_mujoco:
           requires:
             - mujoco_approval
       - container_deploy:
