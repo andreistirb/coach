@@ -312,7 +312,7 @@ class LevelManager(EnvironmentInterface):
             self.reset_required = True
 
     def should_stop(self) -> bool:
-        return all([agent.get_success_rate() >= self.environment.get_target_success_rate() for agent in self.agents.values()])
+        return all([(agent.accumulated_rewards_across_evaluation_episodes / agent.num_evaluation_episodes_completed) >= -21 for agent in self.agents.values()])
 
     def collect_savers(self) -> SaverCollection:
         """
